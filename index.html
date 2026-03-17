@@ -6,6 +6,7 @@
   <title>GitHub Repo Downloader</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
   <style>
     :root {
@@ -79,6 +80,7 @@
       -webkit-appearance: none;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
       background-repeat: no-repeat; background-position: right 12px center;
+      padding-right: 36px;
     }
     select:focus { border-color: var(--tg-button); }
     #branch-card { display: none; }
@@ -125,49 +127,74 @@
     .progress-fill.success { background: #2ea043; }
     .progress-fill.error   { background: var(--tg-destructive); }
 
-    /* ── SAVE CARD — TAP TO SAVE TO STORAGE ── */
-    #save-card { display: none; margin-bottom: 12px; }
-    #save-card.visible { display: block; }
-    .save-inner {
-      background: #1a7f37;
-      border-radius: var(--radius);
-      padding: 4px;
+    /* ── DOWNLOAD OPTIONS ── */
+    #download-card { display: none; margin-bottom: 12px; }
+    #download-card.visible { display: block; }
+    
+    .download-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
-    #save-link {
-      display: flex; align-items: center; justify-content: center; gap: 10px;
-      padding: 16px; border-radius: 9px;
-      background: #2ea043; color: #ffffff;
-      text-decoration: none; font-size: 16px; font-weight: 700;
-      letter-spacing: 0.01em;
-      animation: pulse-green 1.8s ease-in-out infinite;
-      cursor: pointer; border: none; width: 100%; text-align: center;
-    }
-    #save-link:not([href]) { 
-      cursor: pointer;
-      font-size: 14px;
+
+    .download-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
       padding: 14px;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: #2ea043;
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.2s;
+      width: 100%;
+      animation: pulse-green 1.8s ease-in-out infinite;
     }
-    #save-link svg { width: 22px; height: 22px; fill: #ffffff; flex-shrink: 0; }
+
+    .download-btn:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+
+    .download-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .download-btn svg { width: 18px; height: 18px; fill: currentColor; }
+
     @keyframes pulse-green {
       0%, 100% { background: #2ea043; box-shadow: 0 0 0 0 rgba(46,160,67,0.5); }
       50%       { background: #3cb554; box-shadow: 0 0 0 8px rgba(46,160,67,0); }
     }
-    .save-hint {
-      text-align: center; font-size: 12px; color: var(--tg-hint);
-      margin-top: 8px; line-height: 1.5;
+
+    .download-hint {
+      font-size: 11px;
+      color: var(--tg-hint);
+      margin-top: 8px;
+      line-height: 1.4;
+      padding: 8px;
+      background: var(--tg-bg);
+      border-radius: var(--radius-sm);
     }
-    .save-hint strong { color: var(--tg-text); }
+
+    .download-hint strong { color: var(--tg-text); }
 
     /* ── SAVED FILES SECTION ── */
     #saved-card { display: none; margin-bottom: 12px; }
     #saved-card.visible { display: block; }
+    
     .saved-list {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      max-height: 300px;
+      max-height: 400px;
       overflow-y: auto;
     }
+    
     .saved-item {
       display: flex;
       align-items: center;
@@ -177,36 +204,56 @@
       border-radius: var(--radius-sm);
       font-size: 13px;
     }
-    .saved-item-name {
+    
+    .saved-item-info {
       flex: 1;
+      min-width: 0;
+    }
+    
+    .saved-item-name {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      margin-right: 8px;
+      font-weight: 500;
     }
+    
     .saved-item-size {
       font-size: 11px;
       color: var(--tg-hint);
-      margin-right: 8px;
+      margin-top: 2px;
     }
+    
+    .saved-item-actions {
+      display: flex;
+      gap: 4px;
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
+    
     .saved-item button {
-      padding: 6px 12px;
+      padding: 6px 10px;
       border: none;
       border-radius: var(--radius-sm);
       background: var(--tg-button);
       color: var(--tg-button-text);
-      font-size: 12px;
+      font-size: 11px;
       cursor: pointer;
       white-space: nowrap;
-      margin-left: 4px;
-    }
-    .saved-item button:active {
-      opacity: 0.8;
     }
 
+    .saved-item button.delete {
+      background: var(--tg-destructive);
+    }
+    
+    .saved-item button:active { opacity: 0.8; }
+
     .footer {
-      margin-top: auto; padding-top: 24px; text-align: center;
-      font-size: 12px; color: var(--tg-hint); line-height: 1.5;
+      margin-top: auto;
+      padding-top: 24px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--tg-hint);
+      line-height: 1.5;
     }
     .footer a { color: var(--tg-link); text-decoration: none; }
   </style>
@@ -219,7 +266,7 @@
     </div>
     <div class="header-text">
       <h1>GitHub Repo Downloader</h1>
-      <p>Download repos & save locally</p>
+      <p>Download & save repos on mobile</p>
     </div>
   </div>
 
@@ -260,7 +307,7 @@
   <!-- Build Button -->
   <button id="build-btn" onclick="startBuild()">
     <svg viewBox="0 0 24 24"><path d="M10 5V3h4v2zm0 16v-2h4v2zm-6-9v-2h2v2H4zm16 0v-2h2v2h-2zm-5-8h2v2h-2V4zm-6 0h2v2H9V4zm5 16h2v2h-2v-2zm-6 0h2v2H8v-2z"/></svg>
-    Download & Save
+    Download Repository
   </button>
 
   <!-- Status Card -->
@@ -275,12 +322,22 @@
     <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
   </div>
 
-  <!-- Save Link (TAP TO SAVE) -->
-  <div class="card" id="save-card">
-    <div class="save-inner">
-      <button class="save-link-btn" id="save-link"></button>
+  <!-- Download Options Card -->
+  <div class="card" id="download-card">
+    <label>⬇️ Download File</label>
+    <div class="download-buttons">
+      <button class="download-btn" id="download-filesaver-btn" onclick="downloadWithFileSaver()">
+        <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18v12.17l-3.59-3.58L7 12l5 5 5-5-1.41-1.41L13 14.17V2h-2z" fill="currentColor"/></svg>
+        💾 Save to Phone Storage
+      </button>
+      <button class="download-btn" id="download-direct-btn" onclick="downloadDirect()">
+        <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18v12.17l-3.59-3.58L7 12l5 5 5-5-1.41-1.41L13 14.17V2h-2z" fill="currentColor"/></svg>
+        📲 Direct Download
+      </button>
     </div>
-    <p class="save-hint">💾 <strong>Saving to device storage…</strong></p>
+    <div class="download-hint">
+      <strong>💡 Tip:</strong> Try "Save to Phone Storage" first. If it doesn't work, use "Direct Download".
+    </div>
   </div>
 
   <!-- Saved Files -->
@@ -290,7 +347,7 @@
   </div>
 
   <div class="footer">
-    Made for Telegram Mini Apps • Download & store repos offline
+    Made for Telegram Mini Apps • Download repos & save locally
   </div>
 
   <script>
@@ -307,10 +364,9 @@
     let branchFetchTimer = null;
     let currentZipBlob = null;
     let currentFilename = null;
-
-    // ── IndexedDB Setup ──
     let dbInstance = null;
 
+    // ── IndexedDB Setup ──
     async function initDB() {
       return new Promise((resolve, reject) => {
         const req = indexedDB.open('GitRepoDownloaderDB', 1);
@@ -383,10 +439,14 @@
           const item = document.createElement('div');
           item.className = 'saved-item';
           item.innerHTML = `
-            <span class="saved-item-name">${file.filename}</span>
-            <span class="saved-item-size">${(file.size / 1024 / 1024).toFixed(1)}MB</span>
-            <button onclick="downloadFromStorage(${file.id}, '${file.filename}')">Download</button>
-            <button onclick="deleteFromStorage(${file.id})" style="background: var(--tg-destructive);">Delete</button>
+            <div class="saved-item-info">
+              <div class="saved-item-name">${file.filename}</div>
+              <div class="saved-item-size">${(file.size / 1024 / 1024).toFixed(1)}MB</div>
+            </div>
+            <div class="saved-item-actions">
+              <button onclick="downloadFromStorage(${file.id}, '${file.filename}')">📥 Open</button>
+              <button class="delete" onclick="deleteFromStorage(${file.id})">🗑️</button>
+            </div>
           `;
           list.appendChild(item);
         });
@@ -405,7 +465,7 @@
         req.onsuccess = () => {
           const file = req.result;
           if (file && file.blob) {
-            triggerDownload(file.blob, filename);
+            downloadWithFileSaverDirect(file.blob, filename);
             if (tg) tg.HapticFeedback?.notificationOccurred('success');
           }
           resolve();
@@ -421,19 +481,6 @@
       } catch (err) {
         console.error('Failed to delete file:', err);
       }
-    }
-
-    function triggerDownload(blob, filename) {
-      // Revoke previous URL
-      if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
-      currentBlobUrl = URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
-      link.href = currentBlobUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
     }
 
     function authHeaders() {
@@ -474,51 +521,75 @@
       b.classList.toggle('open', open);
     }
 
-    function showSaveLink(blob, filename) {
-      // Store for later
-      currentZipBlob = blob;
-      currentFilename = filename;
-
-      const btn = document.getElementById('save-link');
-      btn.textContent = '';
-      btn.onclick = saveCurrentFile;
-
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('viewBox', '0 0 24 24');
-      svg.style.cssText = 'width:22px;height:22px;fill:#ffffff;flex-shrink:0';
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d', 'M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z');
-      svg.appendChild(path);
-      btn.appendChild(svg);
-      btn.appendChild(document.createTextNode(' SAVE TO DEVICE'));
-
-      document.getElementById('save-card').classList.add('visible');
+    function showDownloadOptions() {
+      const card = document.getElementById('download-card');
+      card.classList.add('visible');
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
       document.getElementById('build-btn').style.display = 'none';
-      document.getElementById('save-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    async function saveCurrentFile() {
+    function downloadWithFileSaverDirect(blob, filename) {
       try {
-        const btn = document.getElementById('save-link');
-        btn.disabled = true;
-        btn.textContent = 'Saving...';
+        saveAs(blob, filename);
+      } catch (err) {
+        console.error('FileSaver failed:', err);
+        alert('Download failed. Try "Direct Download" option.');
+      }
+    }
+
+    async function downloadWithFileSaver() {
+      const btn = document.getElementById('download-filesaver-btn');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      
+      try {
+        downloadWithFileSaverDirect(currentZipBlob, currentFilename);
+        setStatus('✓ Downloaded successfully!', 'success');
         
-        setStatus('Saving to device…', 'loading');
+        // Also save to IndexedDB
         await saveFileToIndexedDB(currentFilename, currentZipBlob);
-        
-        setStatus('✓ Saved successfully!', 'success');
         await loadSavedFiles();
-        
-        setTimeout(() => {
-          document.getElementById('save-card').classList.remove('visible');
-          document.getElementById('build-btn').style.display = '';
-          btn.disabled = false;
-        }, 1500);
         
         if (tg) tg.HapticFeedback?.notificationOccurred('success');
       } catch (err) {
-        setStatus('Failed to save: ' + err.message, 'error');
+        setStatus('Failed: ' + err.message, 'error');
         if (tg) tg.HapticFeedback?.notificationOccurred('error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Save to Phone Storage';
+      }
+    }
+
+    async function downloadDirect() {
+      const btn = document.getElementById('download-direct-btn');
+      btn.disabled = true;
+      btn.textContent = 'Downloading...';
+      
+      try {
+        if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+        currentBlobUrl = URL.createObjectURL(currentZipBlob);
+        
+        const link = document.createElement('a');
+        link.href = currentBlobUrl;
+        link.download = currentFilename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        setStatus('✓ Downloaded! Check your downloads.', 'success');
+        
+        // Also save to IndexedDB
+        await saveFileToIndexedDB(currentFilename, currentZipBlob);
+        await loadSavedFiles();
+        
+        if (tg) tg.HapticFeedback?.notificationOccurred('success');
+      } catch (err) {
+        setStatus('Failed: ' + err.message, 'error');
+        if (tg) tg.HapticFeedback?.notificationOccurred('error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '📲 Direct Download';
       }
     }
 
@@ -559,14 +630,15 @@
     async function startBuild() {
       if (isRunning) return;
 
-      document.getElementById('save-card').classList.remove('visible');
+      document.getElementById('download-card').classList.remove('visible');
       document.getElementById('build-btn').style.display = '';
 
       const rawUrl = document.getElementById('repo-url').value.trim();
       const parsed = parseGitHubUrl(rawUrl);
       if (!parsed) {
         setStatus('Please enter a valid GitHub repository URL.', 'error');
-        setProgress(100); return;
+        setProgress(100); 
+        return;
       }
 
       const branch = document.getElementById('branch-select').value || 'main';
@@ -584,7 +656,7 @@
         );
         if (treeRes.status === 403) throw new Error('Rate limit hit. Add a GitHub token above.');
         if (treeRes.status === 404) throw new Error('Repository or branch not found. Is it public?');
-        if (!treeRes.ok)            throw new Error(`GitHub API error: ${treeRes.status}`);
+        if (!treeRes.ok) throw new Error(`GitHub API error: ${treeRes.status}`);
 
         const treeData = await treeRes.json();
         const blobs    = treeData.tree.filter(i => i.type === 'blob');
@@ -606,7 +678,7 @@
               const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${item.path}`;
               const res = await fetch(url, { headers: authHeaders() });
               if (res.ok) zip.file(`${rootFolder}/${item.path}`, await res.blob());
-            } catch (_) { /* skip */ }
+            } catch (_) { }
             done++;
             setProgress(10 + Math.round((done / total) * 72));
             setStatus('Fetching files…', 'loading', `${done} / ${total}`);
@@ -621,10 +693,11 @@
         );
 
         setProgress(100);
-        setStatus(`Ready! ${total} files zipped. Tap to save.`, 'success', `${total} files`);
+        setStatus(`Ready! ${total} files zipped. Choose download method below.`, 'success', `${total} files`);
 
-        const filename = `${repo}-${branch}.zip`;
-        showSaveLink(zipBlob, filename);
+        currentZipBlob = zipBlob;
+        currentFilename = `${repo}-${branch}.zip`;
+        showDownloadOptions();
 
         if (tg) tg.HapticFeedback?.notificationOccurred('success');
 
