@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GitHub Repo Downloader</title>
+
+  <!-- Telegram Web App SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- JSZip & FileSaver -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <style>
+    /* ── Theme tokens from Telegram SDK ── */
+    :root {
+      --tg-bg:           var(--tg-theme-bg-color, #ffffff);
+      --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #f1f1f1);
+      --tg-text:         var(--tg-theme-text-color, #222222);
+      --tg-hint:         var(--tg-theme-hint-color, #999999);
+      --tg-link:         var(--tg-theme-link-color, #2678b6);
+      --tg-button:       var(--tg-theme-button-color, #2678b6);
+      --tg-button-text:  var(--tg-theme-button-text-color, #ffffff);
+      --tg-destructive:  var(--tg-theme-destructive-text-color, #cc2929);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --transition: 0.2s ease;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--tg-bg);
+      color: var(--tg-text);
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 16px 32px;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .header-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-sm);
+      background: var(--tg-button);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .header-icon svg { width: 24px; height: 24px; fill: var(--tg-button-text); }
+    .header-text h1 { font-size: 17px; font-weight: 600; line-height: 1.2; }
+    .header-text p  { font-size: 13px; color: var(--tg-hint); margin-top: 2px; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--tg-secondary-bg);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    /* ── Label ── */
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: var(--tg-hint);
+      margin-bottom: 8px;
+    }
+
+    /* ── Input ── */
+    .input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-icon {
+      position: absolute;
+      left: 12px;
+      color: var(--tg-hint);
+      pointer-events: none;
+      line-height: 0;
+    }
+    .input-icon svg { width: 16px; height: 16px; fill: currentColor; }
+    input[type="text"] {
+      width: 100%;
+      padding: 11px 12px 11px 38px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid transparent;
+      background: var(--tg-bg);
+      color: var(--tg-text);
+      font-size: 14px;
+      outline: none;
+      transition: border-color var(--transition);
+      -webkit-appearance: none;
+    }
+    input[type="text"]::placeholder { color: var(--tg-hint); }
+    input[type="text"]:focus { border-color: var(--tg-button); }
+
+    /* ── Token input (optional) ── */
+    #token-section { margin-top: 10px; }
+    .toggle-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--tg-link);
+      font-size: 13px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .toggle-btn svg { width: 14px; height: 14px; fill: currentColor; transition: transform var(--transition); }
+    .toggle-btn.open svg { transform: rotate(90deg); }
+    #token-fields { display: none; margin-top: 10px; }
+    #token-fields.visible { display: block; }
+    .hint-text { font-size: 11px; color: var(--tg-hint); margin-top: 6px; line-height: 1.4; }
+
+    /* ── Branch selector ── */
+    select {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid transparent;
+      background: var(--tg-bg);
+      color: var(--tg-text);
+      font-size: 14px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color var(--transition);
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+    select:focus { border-color: var(--tg-button); }
+    #branch-card { display: none; }
+    #branch-card.visible { display: block; }
+
+    /* ── Download button ── */
+    button#download-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: var(--radius);
+      border: none;
+      background: var(--tg-button);
+      color: var(--tg-button-text);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity var(--transition), transform var(--transition);
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    button#download-btn:hover:not(:disabled) { opacity: 0.88; }
+    button#download-btn:active:not(:disabled) { transform: scale(0.98); }
+    button#download-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    button#download-btn svg { width: 18px; height: 18px; fill: var(--tg-button-text); }
+
+    /* ── Status area ── */
+    #status-card {
+      display: none;
+      margin-bottom: 12px;
+    }
+    #status-card.visible { display: block; }
+
+    .status-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .status-text {
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .status-text.error { color: var(--tg-destructive); }
+    .status-text.success { color: #2ea043; }
+
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid var(--tg-hint);
+      border-top-color: var(--tg-button);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .file-count {
+      font-size: 12px;
+      color: var(--tg-hint);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Progress bar ── */
+    .progress-track {
+      height: 5px;
+      background: var(--tg-bg);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--tg-button);
+      border-radius: 99px;
+      width: 0%;
+      transition: width 0.25s ease;
+    }
+    .progress-fill.success { background: #2ea043; }
+    .progress-fill.error   { background: var(--tg-destructive); }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: auto;
+      padding-top: 24px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--tg-hint);
+      line-height: 1.5;
+    }
+    .footer a { color: var(--tg-link); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.341-3.369-1.341-.454-1.154-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836a9.59 9.59 0 012.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+      </svg>
+    </div>
+    <div class="header-text">
+      <h1>GitHub Repo Downloader</h1>
+      <p>Download any public repo as a .zip</p>
+    </div>
+  </div>
+
+  <!-- URL Input -->
+  <div class="card">
+    <label for="repo-url">Repository URL</label>
+    <div class="input-wrap">
+      <span class="input-icon">
+        <svg viewBox="0 0 16 16"><path d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"/></svg>
+      </span>
+      <input type="text" id="repo-url"
+        placeholder="https://github.com/user/repo"
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+    </div>
+
+    <!-- Optional GitHub Token -->
+    <div id="token-section">
+      <button class="toggle-btn" id="token-toggle" type="button" onclick="toggleToken()">
+        <svg viewBox="0 0 16 16"><path d="M6 2l.003 4.042A3.5 3.5 0 007.528 13l.472.002V15h-3v-2H3a1 1 0 01-1-1v-2H0V7h2V5a3 3 0 013-3h1zm1.003 0H9a3 3 0 013 3v2h2v3h-2v2a1 1 0 01-1 1h-2v2H6v-2.002L6.472 13a3.5 3.5 0 001.525-6.958L8 6.003 8.003 2z"/></svg>
+        Add GitHub token (optional, avoids rate limits)
+      </button>
+      <div id="token-fields">
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg viewBox="0 0 16 16"><path d="M8 0a8.1 8.1 0 00-2.548 15.81c.4.075.547-.173.547-.385v-1.358C3.73 14.617 3.266 13 3.266 13c-.364-.924-.889-1.17-.889-1.17-.727-.496.055-.487.055-.487.803.056 1.226.824 1.226.824.714 1.223 1.872.87 2.328.665.073-.517.279-.87.508-1.07-1.777-.2-3.644-.888-3.644-3.953 0-.873.311-1.587.823-2.147-.083-.202-.357-1.015.077-2.117 0 0 .672-.215 2.2.82A7.673 7.673 0 018 4.932a7.67 7.67 0 012-.27c1.527-1.035 2.198-.82 2.198-.82.435 1.102.162 1.916.079 2.117.513.56.822 1.274.822 2.147 0 3.073-1.869 3.75-3.651 3.947.287.248.543.735.543 1.48v2.194c0 .214.144.463.55.385A8.1 8.1 0 008 0z"/></svg>
+          </span>
+          <input type="text" id="gh-token"
+            placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+        </div>
+        <p class="hint-text">
+          Token is used only in-browser. Raises rate limit from 60 → 5,000 req/hr.
+          Generate one at github.com/settings/tokens (no scopes needed for public repos).
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Branch selector (shown after URL is entered) -->
+  <div class="card" id="branch-card">
+    <label for="branch-select">Branch</label>
+    <select id="branch-select">
+      <option value="">Loading branches…</option>
+    </select>
+  </div>
+
+  <!-- Status -->
+  <div class="card" id="status-card">
+    <div class="status-header">
+      <div class="status-text" id="status-text">
+        <div class="spinner" id="spinner"></div>
+        <span id="status-msg">Initialising…</span>
+      </div>
+      <span class="file-count" id="file-count"></span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+  </div>
+
+  <!-- Download button -->
+  <button id="download-btn" onclick="startDownload()">
+    <svg viewBox="0 0 24 24"><path d="M12 16l-5-5 1.41-1.41L11 13.17V4h2v9.17l2.59-2.58L17 11l-5 5zm-7 3h14v2H5v-2z"/></svg>
+    Download .zip
+  </button>
+
+  <!-- Footer -->
+  <div class="footer">
+    Public repos only &nbsp;·&nbsp; No files are uploaded<br/>
+    <a href="https://docs.github.com/rest" target="_blank">GitHub API docs</a>
+  </div>
+
+  <script>
+  /* ─────────────────────────────────────
+     Telegram Web App init
+  ───────────────────────────────────── */
+  const tg = window.Telegram?.WebApp;
+  if (tg) {
+    tg.ready();
+    tg.expand();
+  }
+
+  /* ─────────────────────────────────────
+     State
+  ───────────────────────────────────── */
+  let currentOwner = '';
+  let currentRepo  = '';
+  let branchFetchTimer = null;
+  let isRunning = false;
+
+  /* ─────────────────────────────────────
+     Helpers
+  ───────────────────────────────────── */
+  function getToken() {
+    return document.getElementById('gh-token').value.trim();
+  }
+
+  function authHeaders() {
+    const token = getToken();
+    return token ? { Authorization: `token ${token}` } : {};
+  }
+
+  function parseGitHubUrl(raw) {
+    try {
+      const url = new URL(raw.trim());
+      if (url.hostname !== 'github.com') return null;
+      const parts = url.pathname.replace(/^\//, '').replace(/\/$/, '').split('/');
+      if (parts.length < 2) return null;
+      return { owner: parts[0], repo: parts[1] };
+    } catch { return null; }
+  }
+
+  function setStatus(msg, state = 'loading', count = '') {
+    const card    = document.getElementById('status-card');
+    const textEl  = document.getElementById('status-text');
+    const msgEl   = document.getElementById('status-msg');
+    const spinner = document.getElementById('spinner');
+    const fill    = document.getElementById('progress-fill');
+    const countEl = document.getElementById('file-count');
+
+    card.classList.add('visible');
+    msgEl.textContent = msg;
+    countEl.textContent = count;
+    textEl.className = 'status-text ' + (state === 'error' ? 'error' : state === 'success' ? 'success' : '');
+    spinner.style.display = state === 'loading' ? 'block' : 'none';
+    fill.className = 'progress-fill ' + (state === 'error' ? 'error' : state === 'success' ? 'success' : '');
+  }
+
+  function setProgress(pct) {
+    document.getElementById('progress-fill').style.width = Math.min(100, pct) + '%';
+  }
+
+  function toggleToken() {
+    const fields = document.getElementById('token-fields');
+    const btn    = document.getElementById('token-toggle');
+    const open   = fields.classList.toggle('visible');
+    btn.classList.toggle('open', open);
+  }
+
+  /* ─────────────────────────────────────
+     Branch loading (debounced on input)
+  ───────────────────────────────────── */
+  document.getElementById('repo-url').addEventListener('input', function () {
+    clearTimeout(branchFetchTimer);
+    const parsed = parseGitHubUrl(this.value);
+    if (!parsed) {
+      document.getElementById('branch-card').classList.remove('visible');
+      return;
+    }
+    branchFetchTimer = setTimeout(() => fetchBranches(parsed.owner, parsed.repo), 600);
+  });
+
+  async function fetchBranches(owner, repo) {
+    const sel = document.getElementById('branch-select');
+    const card = document.getElementById('branch-card');
+    sel.innerHTML = '<option>Loading…</option>';
+    card.classList.add('visible');
+
+    try {
+      const res = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/branches?per_page=100`,
+        { headers: authHeaders() }
+      );
+      if (!res.ok) throw new Error(`${res.status}`);
+      const branches = await res.json();
+
+      // Detect default branch
+      const infoRes = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}`,
+        { headers: authHeaders() }
+      );
+      const info = infoRes.ok ? await infoRes.json() : { default_branch: 'main' };
+
+      sel.innerHTML = '';
+      branches.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.name;
+        opt.textContent = b.name + (b.name === info.default_branch ? ' (default)' : '');
+        if (b.name === info.default_branch) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    } catch (e) {
+      sel.innerHTML = '<option value="main">main (could not fetch branches)</option>';
+    }
+  }
+
+  /* ─────────────────────────────────────
+     Core: fetch repo tree & zip
+  ───────────────────────────────────── */
+  async function startDownload() {
+    if (isRunning) return;
+
+    const rawUrl = document.getElementById('repo-url').value.trim();
+    const parsed = parseGitHubUrl(rawUrl);
+    if (!parsed) {
+      setStatus('Please enter a valid GitHub repository URL.', 'error');
+      setProgress(100);
+      return;
+    }
+
+    const branch = document.getElementById('branch-select').value || 'main';
+    const { owner, repo } = parsed;
+
+    isRunning = true;
+    const btn = document.getElementById('download-btn');
+    btn.disabled = true;
+
+    try {
+      /* Step 1 — Get the git tree (recursive) */
+      setStatus('Fetching repository tree…', 'loading');
+      setProgress(5);
+
+      const treeRes = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
+        { headers: authHeaders() }
+      );
+
+      if (treeRes.status === 403) throw new Error('Rate limit hit. Add a GitHub token to continue.');
+      if (treeRes.status === 404) throw new Error('Repository or branch not found. Is it public?');
+      if (!treeRes.ok) throw new Error(`GitHub API error: ${treeRes.status}`);
+
+      const treeData = await treeRes.json();
+      if (treeData.truncated) {
+        setStatus('Warning: repo is very large — tree was truncated by GitHub.', 'loading');
+      }
+
+      const blobs = treeData.tree.filter(item => item.type === 'blob');
+      const total = blobs.length;
+      if (total === 0) throw new Error('No files found in this branch.');
+
+      /* Step 2 — Fetch each file blob and add to JSZip */
+      setStatus('Fetching files…', 'loading', `0 / ${total}`);
+      setProgress(10);
+
+      const zip = new JSZip();
+      const rootFolder = `${repo}-${branch}`;
+
+      // Fetch in small parallel batches to avoid overwhelming the browser/API
+      const BATCH = 6;
+      let done = 0;
+
+      for (let i = 0; i < blobs.length; i += BATCH) {
+        const batch = blobs.slice(i, i + BATCH);
+        await Promise.all(batch.map(async (item) => {
+          try {
+            // Use raw.githubusercontent for binary-safe fetches (avoids base64 decode)
+            const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${item.path}`;
+            const res = await fetch(rawUrl, { headers: authHeaders() });
+            if (res.ok) {
+              const blob = await res.blob();
+              zip.file(`${rootFolder}/${item.path}`, blob);
+            }
+          } catch (_) {
+            // Skip unreadable file but continue
+          }
+          done++;
+          const pct = 10 + Math.round((done / total) * 70);
+          setProgress(pct);
+          setStatus('Fetching files…', 'loading', `${done} / ${total}`);
+        }));
+      }
+
+      /* Step 3 — Generate zip */
+      setStatus('Zipping files…', 'loading', `${total} files`);
+      setProgress(82);
+
+      const zipBlob = await zip.generateAsync(
+        { type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } },
+        (meta) => setProgress(82 + Math.round(meta.percent * 0.16))
+      );
+
+      /* Step 4 — Trigger download */
+      setStatus('Done! Saving…', 'loading');
+      setProgress(99);
+
+      saveAs(zipBlob, `${repo}-${branch}.zip`);
+
+      setProgress(100);
+      setStatus(`✓ ${repo}-${branch}.zip saved successfully!`, 'success', `${total} files`);
+
+      if (tg) tg.HapticFeedback?.notificationOccurred('success');
+
+    } catch (err) {
+      setStatus(err.message || 'Something went wrong.', 'error');
+      setProgress(100);
+      if (tg) tg.HapticFeedback?.notificationOccurred('error');
+    } finally {
+      isRunning = false;
+      btn.disabled = false;
+    }
+  }
+  </script>
+</body>
+</html>
