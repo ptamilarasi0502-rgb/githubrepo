@@ -125,7 +125,7 @@
     .progress-fill.success { background: #2ea043; }
     .progress-fill.error   { background: var(--tg-destructive); }
 
-    /* ── TAP TO SAVE card — the real download UI ── */
+    /* ── SAVE CARD — TAP TO SAVE TO STORAGE ── */
     #save-card { display: none; margin-bottom: 12px; }
     #save-card.visible { display: block; }
     .save-inner {
@@ -133,15 +133,19 @@
       border-radius: var(--radius);
       padding: 4px;
     }
-    /* This <a> IS the download button — user must tap it */
     #save-link {
       display: flex; align-items: center; justify-content: center; gap: 10px;
       padding: 16px; border-radius: 9px;
       background: #2ea043; color: #ffffff;
       text-decoration: none; font-size: 16px; font-weight: 700;
       letter-spacing: 0.01em;
-      /* Pulse animation to draw attention */
       animation: pulse-green 1.8s ease-in-out infinite;
+      cursor: pointer; border: none; width: 100%; text-align: center;
+    }
+    #save-link:not([href]) { 
+      cursor: pointer;
+      font-size: 14px;
+      padding: 14px;
     }
     #save-link svg { width: 22px; height: 22px; fill: #ffffff; flex-shrink: 0; }
     @keyframes pulse-green {
@@ -153,6 +157,52 @@
       margin-top: 8px; line-height: 1.5;
     }
     .save-hint strong { color: var(--tg-text); }
+
+    /* ── SAVED FILES SECTION ── */
+    #saved-card { display: none; margin-bottom: 12px; }
+    #saved-card.visible { display: block; }
+    .saved-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .saved-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      background: var(--tg-bg);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+    }
+    .saved-item-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-right: 8px;
+    }
+    .saved-item-size {
+      font-size: 11px;
+      color: var(--tg-hint);
+      margin-right: 8px;
+    }
+    .saved-item button {
+      padding: 6px 12px;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: var(--tg-button);
+      color: var(--tg-button-text);
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+      margin-left: 4px;
+    }
+    .saved-item button:active {
+      opacity: 0.8;
+    }
 
     .footer {
       margin-top: auto; padding-top: 24px; text-align: center;
@@ -169,7 +219,7 @@
     </div>
     <div class="header-text">
       <h1>GitHub Repo Downloader</h1>
-      <p>Download any public repo as a .zip</p>
+      <p>Download repos & save locally</p>
     </div>
   </div>
 
@@ -178,275 +228,421 @@
     <label for="repo-url">Repository URL</label>
     <div class="input-wrap">
       <span class="input-icon">
-        <svg viewBox="0 0 16 16"><path d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
       </span>
-      <input type="text" id="repo-url"
-        placeholder="https://github.com/user/repo"
-        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+      <input type="text" id="repo-url" placeholder="https://github.com/user/repo">
     </div>
 
+    <!-- Token Section -->
     <div id="token-section">
-      <button class="toggle-btn" id="token-toggle" type="button" onclick="toggleToken()">
-        <svg viewBox="0 0 16 16"><path d="M6 2l.003 4.042A3.5 3.5 0 007.528 13l.472.002V15h-3v-2H3a1 1 0 01-1-1v-2H0V7h2V5a3 3 0 013-3h1zm1.003 0H9a3 3 0 013 3v2h2v3h-2v2a1 1 0 01-1 1h-2v2H6v-2.002L6.472 13a3.5 3.5 0 001.525-6.958L8 6.003 8.003 2z"/></svg>
-        Add GitHub token (optional, avoids rate limits)
+      <button class="toggle-btn" id="token-toggle" onclick="toggleToken()">
+        <svg viewBox="0 0 24 24"><path d="M8.59 16.34l4.58-4.59-4.58-4.59L10 5.75l6 6-6 6z"/></svg>
+        <span>GitHub token (optional)</span>
       </button>
       <div id="token-fields">
-        <div class="input-wrap">
+        <div class="input-wrap" style="margin-top: 10px;">
           <span class="input-icon">
-            <svg viewBox="0 0 16 16"><path d="M8 0a8.1 8.1 0 00-2.548 15.81c.4.075.547-.173.547-.385v-1.358C3.73 14.617 3.266 13 3.266 13c-.364-.924-.889-1.17-.889-1.17-.727-.496.055-.487.055-.487.803.056 1.226.824 1.226.824.714 1.223 1.872.87 2.328.665.073-.517.279-.87.508-1.07-1.777-.2-3.644-.888-3.644-3.953 0-.873.311-1.587.823-2.147-.083-.202-.357-1.015.077-2.117 0 0 .672-.215 2.2.82A7.673 7.673 0 018 4.932a7.67 7.67 0 012-.27c1.527-1.035 2.198-.82 2.198-.82.435 1.102.162 1.916.079 2.117.513.56.822 1.274.822 2.147 0 3.073-1.869 3.75-3.651 3.947.287.248.543.735.543 1.48v2.194c0 .214.144.463.55.385A8.1 8.1 0 008 0z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
           </span>
-          <input type="text" id="gh-token"
-            placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+          <input type="text" id="github-token" placeholder="Paste your GitHub personal access token">
         </div>
-        <p class="hint-text">Token is only used in-browser. Raises rate limit from 60 to 5,000 req/hr.</p>
+        <p class="hint-text">🔒 Stored locally only. Increases rate limits for faster downloads.</p>
       </div>
     </div>
   </div>
 
-  <!-- Branch selector -->
+  <!-- Branch Selection -->
   <div class="card" id="branch-card">
     <label for="branch-select">Branch</label>
-    <select id="branch-select"><option value="">Loading branches…</option></select>
+    <select id="branch-select"><option>main</option></select>
   </div>
 
-  <!-- Status / progress -->
+  <!-- Build Button -->
+  <button id="build-btn" onclick="startBuild()">
+    <svg viewBox="0 0 24 24"><path d="M10 5V3h4v2zm0 16v-2h4v2zm-6-9v-2h2v2H4zm16 0v-2h2v2h-2zm-5-8h2v2h-2V4zm-6 0h2v2H9V4zm5 16h2v2h-2v-2zm-6 0h2v2H8v-2z"/></svg>
+    Download & Save
+  </button>
+
+  <!-- Status Card -->
   <div class="card" id="status-card">
     <div class="status-header">
       <div class="status-text" id="status-text">
-        <div class="spinner" id="spinner"></div>
-        <span id="status-msg">Initialising…</span>
+        <span class="spinner" id="spinner"></span>
+        <span id="status-msg">Processing…</span>
       </div>
-      <span class="file-count" id="file-count"></span>
+      <div class="file-count" id="file-count"></div>
     </div>
     <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
   </div>
 
-  <!-- TAP TO SAVE — appears after zip is ready, replacing the build button -->
-  <div id="save-card">
+  <!-- Save Link (TAP TO SAVE) -->
+  <div class="card" id="save-card">
     <div class="save-inner">
-      <!-- href and download are set dynamically by JS -->
-      <a id="save-link" href="#" download="repo.zip">
-        <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18v12.17l-3.59-3.58L7 12l5 5 5-5-1.41-1.41L13 14.17V2h-2z"/></svg>
-        TAP HERE TO SAVE .ZIP
-      </a>
+      <button class="save-link-btn" id="save-link"></button>
     </div>
-    <p class="save-hint">
-      <strong>Tap the green button</strong> above to save the file.<br/>
-      Find it in your <strong>Downloads</strong> folder afterwards.
-    </p>
+    <p class="save-hint">💾 <strong>Saving to device storage…</strong></p>
   </div>
 
-  <!-- Build button -->
-  <button id="build-btn" onclick="startBuild()">
-    <svg viewBox="0 0 24 24"><path d="M20 6h-2.18c.07-.44.18-.88.18-1.36C18 2.06 15.94 0 13.36 0c-1.46 0-2.75.64-3.64 1.64L9 3 7.28 1.64A4.65 4.65 0 003.64 0C1.06 0-1 2.06-1 4.64c0 .48.11.92.18 1.36H-1v2h22V6zM3.64 6c-1.29 0-2.64-1.35-2.64-2.64 0-1.06.86-1.36 1.36-1.36.5 0 .97.21 1.31.55L6 5.09A3.9 3.9 0 013.64 6zm9.72 0a3.9 3.9 0 01-2.36-.91l2.33-2.54c.34-.34.81-.55 1.31-.55.5 0 1.36.3 1.36 1.36C16 4.65 14.65 6 13.36 6zM1 8v12c0 1.1.9 2 2 2h8v-7h2v7h8c1.1 0 2-.9 2-2V8H1z"/></svg>
-    Build .zip
-  </button>
+  <!-- Saved Files -->
+  <div class="card" id="saved-card">
+    <label>💾 Saved Files</label>
+    <div class="saved-list" id="saved-list"></div>
+  </div>
 
   <div class="footer">
-    Public repos only &nbsp;·&nbsp; No files are uploaded<br/>
-    <a href="https://docs.github.com/rest" target="_blank">GitHub API docs</a>
+    Made for Telegram Mini Apps • Download & store repos offline
   </div>
 
   <script>
-  const tg = window.Telegram?.WebApp;
-  if (tg) { tg.ready(); tg.expand(); }
+    // ── Initialize Telegram Web App ──
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+    }
 
-  let branchFetchTimer = null;
-  let isRunning = false;
-  let currentBlobUrl = null; // keep alive until next build
+    // ── Global State ──
+    let isRunning = false;
+    let currentBlobUrl = null;
+    let branchFetchTimer = null;
+    let currentZipBlob = null;
+    let currentFilename = null;
 
-  function getToken() { return document.getElementById('gh-token').value.trim(); }
-  function authHeaders() {
-    const t = getToken();
-    return t ? { Authorization: `token ${t}` } : {};
-  }
+    // ── IndexedDB Setup ──
+    let dbInstance = null;
 
-  function parseGitHubUrl(raw) {
-    try {
-      let s = raw.trim();
-      if (!s.startsWith('http')) s = 'https://github.com/' + s;
-      const url = new URL(s);
-      if (url.hostname !== 'github.com') return null;
-      const parts = url.pathname.replace(/^\//, '').replace(/\/$/, '').split('/');
-      if (parts.length < 2) return null;
-      const owner = parts[0];
-      const repo  = parts[1].replace(/\.git$/i, '');
-      if (!owner || !repo) return null;
-      return { owner, repo };
-    } catch { return null; }
-  }
-
-  function setStatus(msg, state = 'loading', count = '') {
-    document.getElementById('status-card').classList.add('visible');
-    document.getElementById('status-msg').textContent = msg;
-    document.getElementById('file-count').textContent = count;
-    document.getElementById('status-text').className =
-      'status-text ' + (state === 'error' ? 'error' : state === 'success' ? 'success' : '');
-    document.getElementById('spinner').style.display = state === 'loading' ? 'block' : 'none';
-    const fill = document.getElementById('progress-fill');
-    fill.className = 'progress-fill ' + (state === 'error' ? 'error' : state === 'success' ? 'success' : '');
-  }
-
-  function setProgress(pct) {
-    document.getElementById('progress-fill').style.width = Math.min(100, pct) + '%';
-  }
-
-  function toggleToken() {
-    const f = document.getElementById('token-fields');
-    const b = document.getElementById('token-toggle');
-    const open = f.classList.toggle('visible');
-    b.classList.toggle('open', open);
-  }
-
-  // Show the tappable save link with a real blob URL
-  function showSaveLink(blob, filename) {
-    // Revoke previous object URL to free memory
-    if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
-    currentBlobUrl = URL.createObjectURL(blob);
-
-    const link = document.getElementById('save-link');
-    link.href     = currentBlobUrl;
-    link.download = filename;
-    link.textContent = ''; // clear, then rebuild with icon
-
-    // Rebuild inner content (icon + text)
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', '0 0 24 24');
-    svg.style.cssText = 'width:22px;height:22px;fill:#ffffff;flex-shrink:0';
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', 'M5 20h14v-2H5v2zm7-18v12.17l-3.59-3.58L7 12l5 5 5-5-1.41-1.41L13 14.17V2h-2z');
-    svg.appendChild(path);
-    link.appendChild(svg);
-    link.appendChild(document.createTextNode(' TAP HERE TO SAVE ' + filename));
-
-    document.getElementById('save-card').classList.add('visible');
-    document.getElementById('build-btn').style.display = 'none';
-
-    // Scroll the save button into view
-    document.getElementById('save-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-
-  // Branch loading
-  document.getElementById('repo-url').addEventListener('input', function () {
-    clearTimeout(branchFetchTimer);
-    const parsed = parseGitHubUrl(this.value);
-    if (!parsed) { document.getElementById('branch-card').classList.remove('visible'); return; }
-    branchFetchTimer = setTimeout(() => fetchBranches(parsed.owner, parsed.repo), 600);
-  });
-
-  async function fetchBranches(owner, repo) {
-    const sel  = document.getElementById('branch-select');
-    const card = document.getElementById('branch-card');
-    sel.innerHTML = '<option>Loading…</option>';
-    card.classList.add('visible');
-    try {
-      const [bRes, iRes] = await Promise.all([
-        fetch(`https://api.github.com/repos/${owner}/${repo}/branches?per_page=100`, { headers: authHeaders() }),
-        fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers: authHeaders() })
-      ]);
-      if (!bRes.ok) throw new Error();
-      const branches = await bRes.json();
-      const info     = iRes.ok ? await iRes.json() : { default_branch: 'main' };
-      sel.innerHTML  = '';
-      branches.forEach(b => {
-        const opt = document.createElement('option');
-        opt.value = b.name;
-        opt.textContent = b.name + (b.name === info.default_branch ? ' (default)' : '');
-        if (b.name === info.default_branch) opt.selected = true;
-        sel.appendChild(opt);
+    async function initDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('GitRepoDownloaderDB', 1);
+        req.onerror = () => reject(req.error);
+        req.onsuccess = () => {
+          dbInstance = req.result;
+          resolve(dbInstance);
+        };
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('files')) {
+            db.createObjectStore('files', { keyPath: 'id', autoIncrement: true });
+          }
+        };
       });
-    } catch {
-      sel.innerHTML = '<option value="main">main (could not fetch branches)</option>';
-    }
-  }
-
-  async function startBuild() {
-    if (isRunning) return;
-
-    // Reset save card from previous run
-    document.getElementById('save-card').classList.remove('visible');
-    document.getElementById('build-btn').style.display = '';
-
-    const rawUrl = document.getElementById('repo-url').value.trim();
-    const parsed = parseGitHubUrl(rawUrl);
-    if (!parsed) {
-      setStatus('Please enter a valid GitHub repository URL.', 'error');
-      setProgress(100); return;
     }
 
-    const branch = document.getElementById('branch-select').value || 'main';
-    const { owner, repo } = parsed;
+    async function saveFileToIndexedDB(filename, blob) {
+      if (!dbInstance) await initDB();
+      return new Promise((resolve, reject) => {
+        const transaction = dbInstance.transaction(['files'], 'readwrite');
+        const store = transaction.objectStore('files');
+        const file = {
+          filename,
+          blob,
+          size: blob.size,
+          timestamp: Date.now()
+        };
+        const req = store.add(file);
+        req.onerror = () => reject(req.error);
+        req.onsuccess = () => resolve(req.result);
+      });
+    }
 
-    isRunning = true;
-    document.getElementById('build-btn').disabled = true;
+    async function getFilesFromIndexedDB() {
+      if (!dbInstance) await initDB();
+      return new Promise((resolve, reject) => {
+        const transaction = dbInstance.transaction(['files'], 'readonly');
+        const store = transaction.objectStore('files');
+        const req = store.getAll();
+        req.onerror = () => reject(req.error);
+        req.onsuccess = () => resolve(req.result);
+      });
+    }
 
-    try {
-      // Step 1 — tree
-      setStatus('Fetching repository tree…', 'loading');
-      setProgress(5);
-      const treeRes = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
-        { headers: authHeaders() }
-      );
-      if (treeRes.status === 403) throw new Error('Rate limit hit. Add a GitHub token above.');
-      if (treeRes.status === 404) throw new Error('Repository or branch not found. Is it public?');
-      if (!treeRes.ok)            throw new Error(`GitHub API error: ${treeRes.status}`);
+    async function deleteFileFromIndexedDB(id) {
+      if (!dbInstance) await initDB();
+      return new Promise((resolve, reject) => {
+        const transaction = dbInstance.transaction(['files'], 'readwrite');
+        const store = transaction.objectStore('files');
+        const req = store.delete(id);
+        req.onerror = () => reject(req.error);
+        req.onsuccess = () => resolve();
+      });
+    }
 
-      const treeData = await treeRes.json();
-      const blobs    = treeData.tree.filter(i => i.type === 'blob');
-      const total    = blobs.length;
-      if (total === 0) throw new Error('No files found in this branch.');
+    async function loadSavedFiles() {
+      try {
+        const files = await getFilesFromIndexedDB();
+        const card = document.getElementById('saved-card');
+        const list = document.getElementById('saved-list');
+        
+        if (files.length === 0) {
+          card.classList.remove('visible');
+          return;
+        }
 
-      // Step 2 — fetch files
-      setStatus('Fetching files…', 'loading', `0 / ${total}`);
-      setProgress(10);
+        list.innerHTML = '';
+        files.forEach(file => {
+          const item = document.createElement('div');
+          item.className = 'saved-item';
+          item.innerHTML = `
+            <span class="saved-item-name">${file.filename}</span>
+            <span class="saved-item-size">${(file.size / 1024 / 1024).toFixed(1)}MB</span>
+            <button onclick="downloadFromStorage(${file.id}, '${file.filename}')">Download</button>
+            <button onclick="deleteFromStorage(${file.id})" style="background: var(--tg-destructive);">Delete</button>
+          `;
+          list.appendChild(item);
+        });
+        card.classList.add('visible');
+      } catch (err) {
+        console.error('Failed to load saved files:', err);
+      }
+    }
 
-      const zip = new JSZip();
-      const rootFolder = `${repo}-${branch}`;
-      const BATCH = 6;
-      let done = 0;
+    async function downloadFromStorage(id, filename) {
+      if (!dbInstance) await initDB();
+      return new Promise((resolve) => {
+        const transaction = dbInstance.transaction(['files'], 'readonly');
+        const store = transaction.objectStore('files');
+        const req = store.get(id);
+        req.onsuccess = () => {
+          const file = req.result;
+          if (file && file.blob) {
+            triggerDownload(file.blob, filename);
+            if (tg) tg.HapticFeedback?.notificationOccurred('success');
+          }
+          resolve();
+        };
+      });
+    }
 
-      for (let i = 0; i < blobs.length; i += BATCH) {
-        const batch = blobs.slice(i, i + BATCH);
-        await Promise.all(batch.map(async (item) => {
-          try {
-            const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${item.path}`;
-            const res = await fetch(url, { headers: authHeaders() });
-            if (res.ok) zip.file(`${rootFolder}/${item.path}`, await res.blob());
-          } catch (_) { /* skip unreadable files */ }
-          done++;
-          setProgress(10 + Math.round((done / total) * 72));
-          setStatus('Fetching files…', 'loading', `${done} / ${total}`);
-        }));
+    async function deleteFromStorage(id) {
+      try {
+        await deleteFileFromIndexedDB(id);
+        await loadSavedFiles();
+        if (tg) tg.HapticFeedback?.notificationOccurred('success');
+      } catch (err) {
+        console.error('Failed to delete file:', err);
+      }
+    }
+
+    function triggerDownload(blob, filename) {
+      // Revoke previous URL
+      if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+      currentBlobUrl = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = currentBlobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function authHeaders() {
+      const token = document.getElementById('github-token').value.trim();
+      return token ? { 'Authorization': `token ${token}` } : {};
+    }
+
+    function parseGitHubUrl(url) {
+      try {
+        const u = new URL(url);
+        let parts = u.pathname.split('/').filter(Boolean);
+        const owner = parts[0];
+        const repo  = parts[1]?.replace(/\.git$/i, '');
+        if (!owner || !repo) return null;
+        return { owner, repo };
+      } catch { return null; }
+    }
+
+    function setStatus(msg, state = 'loading', count = '') {
+      document.getElementById('status-card').classList.add('visible');
+      document.getElementById('status-msg').textContent = msg;
+      document.getElementById('file-count').textContent = count;
+      document.getElementById('status-text').className =
+        'status-text ' + (state === 'error' ? 'error' : state === 'success' ? 'success' : '');
+      document.getElementById('spinner').style.display = state === 'loading' ? 'block' : 'none';
+      const fill = document.getElementById('progress-fill');
+      fill.className = 'progress-fill ' + (state === 'error' ? 'error' : state === 'success' ? 'success' : '');
+    }
+
+    function setProgress(pct) {
+      document.getElementById('progress-fill').style.width = Math.min(100, pct) + '%';
+    }
+
+    function toggleToken() {
+      const f = document.getElementById('token-fields');
+      const b = document.getElementById('token-toggle');
+      const open = f.classList.toggle('visible');
+      b.classList.toggle('open', open);
+    }
+
+    function showSaveLink(blob, filename) {
+      // Store for later
+      currentZipBlob = blob;
+      currentFilename = filename;
+
+      const btn = document.getElementById('save-link');
+      btn.textContent = '';
+      btn.onclick = saveCurrentFile;
+
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.style.cssText = 'width:22px;height:22px;fill:#ffffff;flex-shrink:0';
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', 'M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z');
+      svg.appendChild(path);
+      btn.appendChild(svg);
+      btn.appendChild(document.createTextNode(' SAVE TO DEVICE'));
+
+      document.getElementById('save-card').classList.add('visible');
+      document.getElementById('build-btn').style.display = 'none';
+      document.getElementById('save-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    async function saveCurrentFile() {
+      try {
+        const btn = document.getElementById('save-link');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+        
+        setStatus('Saving to device…', 'loading');
+        await saveFileToIndexedDB(currentFilename, currentZipBlob);
+        
+        setStatus('✓ Saved successfully!', 'success');
+        await loadSavedFiles();
+        
+        setTimeout(() => {
+          document.getElementById('save-card').classList.remove('visible');
+          document.getElementById('build-btn').style.display = '';
+          btn.disabled = false;
+        }, 1500);
+        
+        if (tg) tg.HapticFeedback?.notificationOccurred('success');
+      } catch (err) {
+        setStatus('Failed to save: ' + err.message, 'error');
+        if (tg) tg.HapticFeedback?.notificationOccurred('error');
+      }
+    }
+
+    // Branch loading
+    document.getElementById('repo-url').addEventListener('input', function () {
+      clearTimeout(branchFetchTimer);
+      const parsed = parseGitHubUrl(this.value);
+      if (!parsed) { document.getElementById('branch-card').classList.remove('visible'); return; }
+      branchFetchTimer = setTimeout(() => fetchBranches(parsed.owner, parsed.repo), 600);
+    });
+
+    async function fetchBranches(owner, repo) {
+      const sel  = document.getElementById('branch-select');
+      const card = document.getElementById('branch-card');
+      sel.innerHTML = '<option>Loading…</option>';
+      card.classList.add('visible');
+      try {
+        const [bRes, iRes] = await Promise.all([
+          fetch(`https://api.github.com/repos/${owner}/${repo}/branches?per_page=100`, { headers: authHeaders() }),
+          fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers: authHeaders() })
+        ]);
+        if (!bRes.ok) throw new Error();
+        const branches = await bRes.json();
+        const info     = iRes.ok ? await iRes.json() : { default_branch: 'main' };
+        sel.innerHTML  = '';
+        branches.forEach(b => {
+          const opt = document.createElement('option');
+          opt.value = b.name;
+          opt.textContent = b.name + (b.name === info.default_branch ? ' (default)' : '');
+          if (b.name === info.default_branch) opt.selected = true;
+          sel.appendChild(opt);
+        });
+      } catch {
+        sel.innerHTML = '<option value="main">main (could not fetch branches)</option>';
+      }
+    }
+
+    async function startBuild() {
+      if (isRunning) return;
+
+      document.getElementById('save-card').classList.remove('visible');
+      document.getElementById('build-btn').style.display = '';
+
+      const rawUrl = document.getElementById('repo-url').value.trim();
+      const parsed = parseGitHubUrl(rawUrl);
+      if (!parsed) {
+        setStatus('Please enter a valid GitHub repository URL.', 'error');
+        setProgress(100); return;
       }
 
-      // Step 3 — zip
-      setStatus('Zipping…', 'loading', `${total} files`);
-      setProgress(84);
-      const zipBlob = await zip.generateAsync(
-        { type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } },
-        (m) => setProgress(84 + Math.round(m.percent * 0.14))
-      );
+      const branch = document.getElementById('branch-select').value || 'main';
+      const { owner, repo } = parsed;
 
-      // Step 4 — show tappable save button (don't auto-click)
-      setProgress(100);
-      setStatus(`Ready! ${total} files zipped. Tap the button below to save.`, 'success', `${total} files`);
+      isRunning = true;
+      document.getElementById('build-btn').disabled = true;
 
-      const filename = `${repo}-${branch}.zip`;
-      showSaveLink(zipBlob, filename);
+      try {
+        setStatus('Fetching repository tree…', 'loading');
+        setProgress(5);
+        const treeRes = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
+          { headers: authHeaders() }
+        );
+        if (treeRes.status === 403) throw new Error('Rate limit hit. Add a GitHub token above.');
+        if (treeRes.status === 404) throw new Error('Repository or branch not found. Is it public?');
+        if (!treeRes.ok)            throw new Error(`GitHub API error: ${treeRes.status}`);
 
-      if (tg) tg.HapticFeedback?.notificationOccurred('success');
+        const treeData = await treeRes.json();
+        const blobs    = treeData.tree.filter(i => i.type === 'blob');
+        const total    = blobs.length;
+        if (total === 0) throw new Error('No files found in this branch.');
 
-    } catch (err) {
-      setStatus(err.message || 'Something went wrong.', 'error');
-      setProgress(100);
-      if (tg) tg.HapticFeedback?.notificationOccurred('error');
-    } finally {
-      isRunning = false;
-      document.getElementById('build-btn').disabled = false;
+        setStatus('Fetching files…', 'loading', `0 / ${total}`);
+        setProgress(10);
+
+        const zip = new JSZip();
+        const rootFolder = `${repo}-${branch}`;
+        const BATCH = 6;
+        let done = 0;
+
+        for (let i = 0; i < blobs.length; i += BATCH) {
+          const batch = blobs.slice(i, i + BATCH);
+          await Promise.all(batch.map(async (item) => {
+            try {
+              const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${item.path}`;
+              const res = await fetch(url, { headers: authHeaders() });
+              if (res.ok) zip.file(`${rootFolder}/${item.path}`, await res.blob());
+            } catch (_) { /* skip */ }
+            done++;
+            setProgress(10 + Math.round((done / total) * 72));
+            setStatus('Fetching files…', 'loading', `${done} / ${total}`);
+          }));
+        }
+
+        setStatus('Zipping…', 'loading', `${total} files`);
+        setProgress(84);
+        const zipBlob = await zip.generateAsync(
+          { type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } },
+          (m) => setProgress(84 + Math.round(m.percent * 0.14))
+        );
+
+        setProgress(100);
+        setStatus(`Ready! ${total} files zipped. Tap to save.`, 'success', `${total} files`);
+
+        const filename = `${repo}-${branch}.zip`;
+        showSaveLink(zipBlob, filename);
+
+        if (tg) tg.HapticFeedback?.notificationOccurred('success');
+
+      } catch (err) {
+        setStatus(err.message || 'Something went wrong.', 'error');
+        setProgress(100);
+        if (tg) tg.HapticFeedback?.notificationOccurred('error');
+      } finally {
+        isRunning = false;
+        document.getElementById('build-btn').disabled = false;
+      }
     }
-  }
+
+    // Initialize
+    window.addEventListener('load', async () => {
+      await initDB();
+      await loadSavedFiles();
+    });
   </script>
 </body>
 </html>
