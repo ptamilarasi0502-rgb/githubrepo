@@ -356,11 +356,19 @@
 
   function parseGitHubUrl(raw) {
     try {
-      const url = new URL(raw.trim());
+      // Support bare "owner/repo" shorthand too
+      let normalized = raw.trim();
+      if (!normalized.startsWith('http')) {
+        normalized = 'https://github.com/' + normalized;
+      }
+      const url = new URL(normalized);
       if (url.hostname !== 'github.com') return null;
       const parts = url.pathname.replace(/^\//, '').replace(/\/$/, '').split('/');
       if (parts.length < 2) return null;
-      return { owner: parts[0], repo: parts[1] };
+      const owner = parts[0];
+      const repo  = parts[1].replace(/\.git$/i, ''); // strip .git suffix
+      if (!owner || !repo) return null;
+      return { owner, repo };
     } catch { return null; }
   }
 
