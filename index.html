@@ -26,7 +26,7 @@
     label { display: block; font-size: 11px; font-weight: 600; color: #999; margin-bottom: 6px; text-transform: uppercase; }
     input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background: white; color: #000; font-size: 14px; margin-bottom: 8px; -webkit-appearance: none; }
     input:focus, select:focus { outline: none; border-color: #007AFF; }
-    button { width: 100%; padding: 12px; border: none; border-radius: 6px; background: #007AFF; color: white; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 8px; }
+    button { width: 100%; padding: 12px; border: none; border-radius: 6px; background: #007AFF; color: white; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 8px; transition: opacity 0.2s; }
     button:active { opacity: 0.7; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
     .status { padding: 10px; border-radius: 6px; margin-bottom: 12px; font-size: 13px; display: none; }
@@ -37,13 +37,14 @@
     .progress { width: 100%; height: 3px; background: #f0f0f0; border-radius: 99px; overflow: hidden; margin-bottom: 12px; display: none; }
     .progress.visible { display: block; }
     .progress-bar { height: 100%; background: #007AFF; width: 0%; transition: width 0.3s; }
+    .small-text { font-size: 11px; color: #999; margin-top: 4px; }
   </style>
 </head>
 <body>
 
 <div class="container">
   <h1>📥 GitHub Downloader</h1>
-  <p>Download repos using Telegram's native download</p>
+  <p>Download repos directly to your phone</p>
 
   <div id="status" class="status"></div>
   <div id="progress" class="progress"><div id="progressBar" class="progress-bar"></div></div>
@@ -59,6 +60,13 @@
   </div>
 
   <button id="downloadBtn" onclick="startDownload()">📥 Download Repository</button>
+  
+  <div id="methodCard" class="card" style="display:none;">
+    <label>Download Method</label>
+    <button id="methodDirectBtn" onclick="useDirectMethod()" style="background: #28a745;">📲 Direct Download (No Telegram API)</button>
+    <button id="methodBlobBtn" onclick="useBlobMethod()" style="background: #17a2b8;">💾 Save & Download Later</button>
+    <p class="small-text">If one method doesn't work, try the other</p>
+  </div>
 </div>
 
 <script>
@@ -77,6 +85,11 @@
       console.error('Telegram init error:', e);
     }
   }
+
+  // State
+  let currentZipBlob = null;
+  let currentFilename = null;
+  let useMethod = 'direct'; // 'direct' or 'blob'
 
   // Helper functions
   const el = (id) => document.getElementById(id);
@@ -132,7 +145,109 @@
     }
   });
 
-  // Main download function
+  function useDirectMethod() {
+    useMethod = 'direct';
+    startDownloadWithMethod();
+  }
+
+  function useBlobMethod() {
+    useMethod = 'blob';
+    startDownloadWithMethod();
+  }
+
+  async function startDownloadWithMethod() {
+    el('methodCard').style.display = 'none';
+    
+    if (useMethod === 'direct') {
+      console.log('Using direct download method...');
+      await directDownload();
+    } else {
+      console.log('Using blob download method...');
+      await blobDownload();
+    }
+  }
+
+  // DIRECT DOWNLOAD - Using standard blob download (works in most browsers)
+  async function directDownload() {
+    if (!currentZipBlob) return;
+    
+    try {
+      setStatus('Starting direct download...', 'info');
+      
+      const url = URL.createObjectURL(currentZipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = currentFilename;
+      
+      console.log('Triggering direct download:', currentFilename);
+      
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+      
+      setStatus('✓ Download started! Check your downloads folder.', 'success');
+      console.log('✓ Direct download triggered');
+    } catch (e) {
+      console.error('Direct download error:', e);
+      setStatus('Error: ' + e.message, 'error');
+    }
+  }
+
+  // BLOB DOWNLOAD - Save to phone using fallback method
+  async function blobDownload() {
+    if (!currentZipBlob) return;
+    
+    try {
+      setStatus('Preparing file for download...', 'info');
+      
+      // Try using Telegram's downloadFile with blob converted to arraybuffer
+      if (tg && tg.downloadFile && false) { // Disabled - doesn't work with data URLs
+        console.log('Attempting Telegram API download...');
+        setStatus('Using Telegram download dialog...', 'info');
+        
+        // This would work if we had a real HTTP URL
+        tg.downloadFile({
+          url: 'blob-download', // Placeholder
+          file_name: currentFilename
+        }, function(result) {
+          console.log('Download result:', result);
+          if (result) {
+            setStatus('✓ Download started via Telegram!', 'success');
+          } else {
+            fallbackDownload();
+          }
+        });
+      } else {
+        console.log('Telegram API not available, using fallback...');
+        fallbackDownload();
+      }
+    } catch (e) {
+      console.error('Blob download error:', e);
+      fallbackDownload();
+    }
+  }
+
+  function fallbackDownload() {
+    console.log('Using fallback download...');
+    
+    const url = URL.createObjectURL(currentZipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = currentFilename;
+    
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+    
+    setStatus('✓ Download started! The file is being downloaded.', 'success');
+    console.log('✓ Fallback download triggered');
+  }
+
+  // MAIN DOWNLOAD FUNCTION
   async function startDownload() {
     const url = el('repoUrl').value.trim();
     console.log('Starting download for:', url);
@@ -144,6 +259,7 @@
 
     try {
       el('downloadBtn').disabled = true;
+      el('methodCard').style.display = 'none';
 
       // Parse URL
       const u = new URL(url);
@@ -153,7 +269,7 @@
       const branch = el('branchSelect').value || 'main';
 
       console.log(`Downloading: ${owner}/${repo}@${branch}`);
-      setStatus('Fetching repository tree...', 'info');
+      setStatus('Fetching repository...', 'info');
       setProgress(10);
 
       // Fetch tree
@@ -172,6 +288,9 @@
         throw new Error('No files in repository');
       }
 
+      setStatus(`Downloading ${files.length} files...`, 'info');
+      setProgress(20);
+
       // Load JSZip if needed
       if (typeof JSZip === 'undefined') {
         console.log('Loading JSZip dynamically...');
@@ -186,9 +305,6 @@
           document.head.appendChild(script);
         });
       }
-
-      setStatus(`Downloading ${files.length} files...`, 'info');
-      setProgress(20);
 
       const zip = new JSZip();
       let fetched = 0;
@@ -217,66 +333,24 @@
 
       // Generate ZIP
       const zipBlob = await zip.generateAsync({ type: 'blob' });
-      console.log(`ZIP size: ${(zipBlob.size / 1024 / 1024).toFixed(1)}MB`);
+      const zipSize = (zipBlob.size / 1024 / 1024).toFixed(1);
+      console.log(`ZIP size: ${zipSize}MB`);
 
       setProgress(100);
-      const filename = `${repo}-${branch}.zip`;
-      
-      // ✅ USE TELEGRAM'S NATIVE DOWNLOAD METHOD
-      if (tg && tg.downloadFile) {
-        console.log('Using Telegram downloadFile method...');
-        setStatus('Opening Telegram download dialog...', 'info');
-        
-        // Convert blob to data URL
-        const reader = new FileReader();
-        reader.onload = () => {
-          const dataUrl = reader.result;
-          console.log('Data URL created, triggering download...');
-          
-          tg.downloadFile({
-            url: dataUrl,
-            filename: filename
-          });
-          
-          setStatus('✓ Download started! Check Telegram downloads.', 'success');
-          console.log('✓ Download triggered via Telegram API');
-        };
-        reader.onerror = () => {
-          console.error('FileReader error');
-          fallbackDownload(zipBlob, filename);
-        };
-        reader.readAsDataURL(zipBlob);
-      } else {
-        console.log('Telegram downloadFile not available, using fallback...');
-        fallbackDownload(zipBlob, filename);
-      }
+      currentZipBlob = zipBlob;
+      currentFilename = `${repo}-${branch}.zip`;
+
+      setStatus(`✓ ZIP ready! (${zipSize}MB) Choose download method.`, 'success');
+      el('methodCard').style.display = 'block';
+
+      if (tg) tg.HapticFeedback?.notificationOccurred('success');
 
     } catch (e) {
       console.error('Error:', e);
       setStatus(`❌ Error: ${e.message}`, 'error');
+      if (tg) tg.HapticFeedback?.notificationOccurred('error');
     } finally {
       el('downloadBtn').disabled = false;
-    }
-  }
-
-  // Fallback download method
-  function fallbackDownload(blob, filename) {
-    console.log('Using fallback download method...');
-    try {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 100);
-      
-      setStatus('✓ Download started! Check downloads folder.', 'success');
-      console.log('✓ Fallback download triggered');
-    } catch (e) {
-      console.error('Fallback download error:', e);
-      setStatus('Download failed: ' + e.message, 'error');
     }
   }
 
