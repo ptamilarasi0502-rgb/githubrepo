@@ -1,198 +1,379 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GitHub Downloader Test</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>GitHub Downloader</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
-    body { font-family: Arial; background: #f0f0f0; margin: 0; padding: 16px; }
-    .container { max-width: 100%; background: white; padding: 16px; border-radius: 8px; }
-    h1 { color: #333; margin: 0 0 8px 0; }
-    .output { background: #f5f5f5; border: 1px solid #ddd; padding: 12px; border-radius: 4px; margin: 12px 0; font-size: 13px; font-family: monospace; max-height: 300px; overflow-y: auto; white-space: pre-wrap; }
-    input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
-    button { width: 100%; padding: 12px; margin: 8px 0; background: #007bff; color: white; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; }
-    button:active { opacity: 0.8; }
-    .status { padding: 8px; margin: 8px 0; border-radius: 4px; }
-    .success { background: #d4edda; color: #155724; }
-    .error { background: #f8d7da; color: #721c24; }
-    .info { background: #d1ecf1; color: #0c5460; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--tg-bg, #ffffff);
+      color: var(--tg-text-color, #000000);
+      display: flex;
+      flex-direction: column;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      padding-top: max(env(safe-area-inset-top), 12px);
+      padding-bottom: max(env(safe-area-inset-bottom), 12px);
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      max-width: 100%;
+      padding: 0 16px;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 16px 0 8px 0;
+    }
+
+    p {
+      font-size: 13px;
+      color: #999;
+      margin: 0 0 20px 0;
+    }
+
+    .card {
+      background: var(--tg-secondary-bg-color, #f0f0f0);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #999;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: white;
+      color: #000;
+      font-size: 14px;
+      margin-bottom: 8px;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #007AFF;
+      background: white;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      background: #007AFF;
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 8px;
+      transition: opacity 0.2s;
+    }
+
+    button:active {
+      opacity: 0.7;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .status {
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      display: none;
+    }
+
+    .status.visible {
+      display: block;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+
+    .progress {
+      width: 100%;
+      height: 3px;
+      background: #f0f0f0;
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .progress.visible {
+      display: block;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: #007AFF;
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    .hidden {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
   <h1>📥 GitHub Downloader</h1>
-  <p>Test version with visible output</p>
-  
-  <div id="status" class="status info" style="display:none;"></div>
-  
-  <label>GitHub URL:</label>
-  <input type="text" id="url" placeholder="https://github.com/user/repo" value="">
-  
-  <button onclick="test()">🧪 TEST - Show Output</button>
-  <button onclick="downloadRepo()">📥 Download</button>
-  
-  <h3>Debug Output:</h3>
-  <div id="output" class="output">Loading...</div>
+  <p>Download any public repo as ZIP</p>
+
+  <div id="status" class="status"></div>
+  <div id="progress" class="progress"><div id="progressBar" class="progress-bar"></div></div>
+
+  <div class="card">
+    <label>GitHub URL</label>
+    <input type="text" id="repoUrl" placeholder="https://github.com/user/repo">
+  </div>
+
+  <div id="branchCard" class="card hidden">
+    <label>Branch</label>
+    <select id="branchSelect"><option>main</option></select>
+  </div>
+
+  <button id="downloadBtn" onclick="startDownload()">📥 Download</button>
 </div>
 
 <script>
-  const out = document.getElementById('output');
-  const stat = document.getElementById('status');
-  
-  function log(msg) {
-    console.log(msg);
-    out.textContent += msg + '\n';
-    out.scrollTop = out.scrollHeight;
-  }
-  
-  function showStatus(msg, type) {
-    stat.textContent = msg;
-    stat.className = 'status ' + type;
-    stat.style.display = 'block';
-  }
-  
-  // Start
-  log('=== APP STARTED ===');
-  log('Time: ' + new Date().toLocaleString());
-  log('');
-  
-  // Check Telegram
-  if (window.Telegram) {
-    log('✓ Telegram object exists');
-    if (window.Telegram.WebApp) {
-      log('✓ Telegram.WebApp exists');
-      window.Telegram.WebApp.ready();
-      log('✓ WebApp.ready() called');
-    } else {
-      log('✗ Telegram.WebApp is undefined');
+  console.log('Script started');
+
+  const tg = window.Telegram?.WebApp;
+  console.log('Telegram:', tg);
+
+  if (!tg) {
+    alert('This app only works in Telegram');
+  } else {
+    try {
+      tg.ready();
+      console.log('✓ WebApp.ready() called');
+      tg.expand();
+      console.log('✓ WebApp.expand() called');
+      tg.enableClosingConfirmation();
+    } catch (e) {
+      console.error('WebApp error:', e);
     }
-  } else {
-    log('✗ Telegram is undefined');
   }
-  
-  // Check JSZip
-  if (window.JSZip) {
-    log('✓ JSZip loaded');
-  } else {
-    log('✗ JSZip not loaded');
+
+  // Helper functions
+  const el = (id) => document.getElementById(id);
+  const show = (id) => el(id).classList.remove('hidden');
+  const hide = (id) => el(id).classList.add('hidden');
+
+  function setStatus(msg, type = 'info') {
+    const status = el('status');
+    status.textContent = msg;
+    status.className = `status visible ${type}`;
+    console.log(`[${type}] ${msg}`);
   }
-  
-  log('');
-  log('Ready to download!');
-  log('');
-  
-  function test() {
-    log('=== TEST CLICKED ===');
-    log('URL input value: ' + document.getElementById('url').value);
-    log('Test complete');
-    showStatus('Test works!', 'success');
+
+  function setProgress(pct) {
+    el('progress').classList.add('visible');
+    el('progressBar').style.width = Math.min(100, pct) + '%';
   }
-  
+
   async function downloadRepo() {
-    log('');
-    log('=== DOWNLOAD STARTED ===');
-    
-    const url = document.getElementById('url').value.trim();
-    log('URL: ' + url);
-    
+    const url = el('repoUrl').value.trim();
+    console.log('URL:', url);
+
     if (!url) {
-      log('✗ URL is empty');
-      showStatus('Enter a URL', 'error');
+      setStatus('Enter GitHub URL', 'error');
       return;
     }
-    
-    // Parse URL
-    let owner, repo;
+
     try {
+      // Parse URL
       const u = new URL(url);
       const parts = u.pathname.split('/').filter(Boolean);
-      owner = parts[0];
-      repo = parts[1].replace(/\.git/i, '');
-      log('✓ Parsed: ' + owner + '/' + repo);
-    } catch (e) {
-      log('✗ Invalid URL: ' + e.message);
-      showStatus('Invalid URL format', 'error');
-      return;
-    }
-    
-    try {
-      showStatus('Downloading...', 'info');
-      
+      const owner = parts[0];
+      const repo = parts[1].replace(/\.git$/i, '');
+      const branch = el('branchSelect').value || 'main';
+
+      console.log(`Downloading: ${owner}/${repo}@${branch}`);
+      setStatus('Fetching repository...', 'info');
+      setProgress(10);
+
       // Fetch tree
-      log('Fetching tree...');
-      const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/main?recursive=1`;
-      log('Tree URL: ' + treeUrl);
-      
+      const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`;
+      console.log('Tree URL:', treeUrl);
+
       const treeRes = await fetch(treeUrl);
-      log('Tree response: ' + treeRes.status + ' ' + treeRes.statusText);
-      
+      console.log('Tree response:', treeRes.status);
+
       if (!treeRes.ok) {
-        log('✗ Tree fetch failed');
-        showStatus('Repository not found', 'error');
-        return;
+        throw new Error('Repository not found');
       }
-      
+
       const treeData = await treeRes.json();
       const files = treeData.tree.filter(f => f.type === 'blob');
-      log('✓ Found ' + files.length + ' files');
-      
+      console.log(`Found ${files.length} files`);
+
       if (files.length === 0) {
-        log('✗ No files found');
-        showStatus('No files to download', 'error');
-        return;
+        throw new Error('No files in repository');
       }
-      
-      // Download files
-      log('Downloading ' + Math.min(5, files.length) + ' files (sample)...');
+
+      setStatus(`Downloading ${files.length} files...`, 'info');
+      setProgress(20);
+
+      // Need JSZip
+      if (typeof JSZip === 'undefined') {
+        // Dynamically load JSZip
+        console.log('Loading JSZip...');
+        await new Promise((resolve) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+          script.onload = resolve;
+          document.head.appendChild(script);
+        });
+      }
+
       const zip = new JSZip();
-      let count = 0;
-      
-      for (let i = 0; i < Math.min(5, files.length); i++) {
-        const f = files[i];
-        try {
-          const fileUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${f.path}`;
-          const fileRes = await fetch(fileUrl);
-          if (fileRes.ok) {
-            zip.file(f.path, await fileRes.blob());
-            count++;
-            log('  ✓ ' + f.path);
+      let fetched = 0;
+
+      // Download files in batches
+      for (let i = 0; i < files.length; i += 5) {
+        const batch = files.slice(i, i + 5);
+        await Promise.all(batch.map(async (f) => {
+          try {
+            const fileUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${f.path}`;
+            const fileRes = await fetch(fileUrl);
+            if (fileRes.ok) {
+              zip.file(`${repo}/${f.path}`, await fileRes.blob());
+            }
+          } catch (e) {
+            console.log(`Skip: ${f.path}`);
           }
-        } catch (e) {
-          log('  ✗ ' + f.path + ': ' + e.message);
-        }
+          fetched++;
+          setProgress(20 + Math.round((fetched / files.length) * 60));
+        }));
       }
-      
-      log('✓ Downloaded ' + count + ' files');
-      
-      // Create ZIP
-      log('Creating ZIP...');
+
+      console.log(`Downloaded ${fetched} files`);
+      setStatus('Creating ZIP...', 'info');
+      setProgress(85);
+
+      // Generate ZIP
       const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const zipSize = (zipBlob.size / 1024 / 1024).toFixed(2);
-      log('✓ ZIP created: ' + zipSize + 'MB');
-      
-      // Download
-      log('Triggering download...');
-      const url = URL.createObjectURL(zipBlob);
+      console.log(`ZIP size: ${(zipBlob.size / 1024 / 1024).toFixed(1)}MB`);
+
+      setProgress(100);
+      setStatus('✓ Download ready!', 'success');
+
+      // Trigger download
+      const url2 = URL.createObjectURL(zipBlob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = repo + '-sample.zip';
+      a.href = url2;
+      a.download = `${repo}-${branch}.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      log('✓ Download triggered!');
-      showStatus('Download started! Check your files.', 'success');
-      
+      URL.revokeObjectURL(url2);
+
+      console.log('Download triggered');
+
     } catch (e) {
-      log('✗ Error: ' + e.message);
-      log(e.stack);
-      showStatus('Error: ' + e.message, 'error');
+      console.error('Error:', e);
+      setStatus('Error: ' + e.message, 'error');
     }
   }
+
+  // Fetch branches when URL changes
+  el('repoUrl').addEventListener('input', async (e) => {
+    try {
+      const u = new URL(e.target.value);
+      const parts = u.pathname.split('/').filter(Boolean);
+      const owner = parts[0];
+      const repo = parts[1]?.replace(/\.git$/i, '');
+
+      if (!owner || !repo) {
+        hide('branchCard');
+        return;
+      }
+
+      console.log(`Fetching branches for ${owner}/${repo}`);
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/branches?per_page=50`);
+
+      if (!res.ok) {
+        hide('branchCard');
+        return;
+      }
+
+      const branches = await res.json();
+      const select = el('branchSelect');
+      select.innerHTML = '';
+      branches.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.name;
+        opt.textContent = b.name;
+        select.appendChild(opt);
+      });
+
+      show('branchCard');
+      console.log(`Found ${branches.length} branches`);
+    } catch (e) {
+      hide('branchCard');
+    }
+  });
+
+  function startDownload() {
+    el('downloadBtn').disabled = true;
+    downloadRepo().finally(() => {
+      el('downloadBtn').disabled = false;
+    });
+  }
+
+  console.log('✓ Ready');
+  setStatus('Paste GitHub URL above', 'info');
 </script>
 
 </body>
