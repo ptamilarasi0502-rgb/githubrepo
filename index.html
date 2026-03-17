@@ -532,13 +532,13 @@
       );
 
       /* Step 4 — Trigger download */
-      setStatus('Done! Saving…', 'loading');
+      setStatus('Preparing download…', 'loading');
       setProgress(99);
 
-      saveAs(zipBlob, `${repo}-${branch}.zip`);
+      await robustDownload(zipBlob, `${repo}-${branch}.zip`);
 
       setProgress(100);
-      setStatus(`✓ ${repo}-${branch}.zip saved successfully!`, 'success', `${total} files`);
+      setStatus(`✓ ${repo}-${branch}.zip saved! Check your Downloads folder.`, 'success', `${total} files`);
 
       if (tg) tg.HapticFeedback?.notificationOccurred('success');
 
@@ -550,6 +550,55 @@
       isRunning = false;
       btn.disabled = false;
     }
+  }
+
+  // robustDownload: tries 3 methods for Telegram Android WebView compatibility
+  function robustDownload(blob, filename) {
+    return new Promise((resolve, reject) => {
+
+      // Method 1: objectURL anchor (desktop + most mobile browsers)
+      try {
+        const objUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objUrl;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          URL.revokeObjectURL(objUrl);
+          document.body.removeChild(a);
+          resolve();
+        }, 400);
+        return;
+      } catch (e) { console.warn('Download M1 failed', e); }
+
+      // Method 2: base64 data-URI anchor (Telegram Android WebView)
+      try {
+        const reader = new FileReader();
+        reader.onload = function () {
+          try {
+            const a = document.createElement('a');
+            a.href = reader.result;
+            a.download = filename;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { document.body.removeChild(a); resolve(); }, 400);
+          } catch (e2) { tryFileSaver(); }
+        };
+        reader.onerror = () => tryFileSaver();
+        reader.readAsDataURL(blob);
+        return;
+      } catch (e) { console.warn('Download M2 failed', e); }
+
+      tryFileSaver();
+
+      function tryFileSaver() {
+        try { saveAs(blob, filename); resolve(); }
+        catch (e) { reject(new Error('Download failed. Try opening in your default browser.')); }
+      }
+    });
   }
   </script>
 </body>
