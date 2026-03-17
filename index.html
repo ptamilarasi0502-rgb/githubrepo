@@ -1,629 +1,198 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GitHub Repo Downloader</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Downloader Test</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    
-    :root {
-      --bg: #ffffff;
-      --secondary-bg: #f1f1f1;
-      --text: #222222;
-      --hint: #999999;
-      --button: #2678b6;
-      --success: #2ea043;
-      --error: #cc2929;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .container { max-width: 100%; margin: 0 auto; }
-    
-    .header {
-      text-align: center;
-      margin-bottom: 24px;
-      padding: 16px;
-      background: var(--secondary-bg);
-      border-radius: 12px;
-    }
-
-    .header h1 { font-size: 18px; margin-bottom: 4px; }
-    .header p { font-size: 13px; color: var(--hint); }
-
-    .card {
-      background: var(--secondary-bg);
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 12px;
-    }
-
-    label {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--hint);
-      margin-bottom: 8px;
-      text-transform: uppercase;
-    }
-
-    input[type="text"],
-    select {
-      width: 100%;
-      padding: 12px;
-      border: 1px solid var(--secondary-bg);
-      border-radius: 6px;
-      background: white;
-      color: var(--text);
-      font-size: 14px;
-      margin-bottom: 8px;
-      -webkit-appearance: none;
-    }
-
-    input[type="text"]:focus,
-    select:focus {
-      outline: none;
-      border-color: var(--button);
-    }
-
-    button {
-      width: 100%;
-      padding: 14px;
-      border: none;
-      border-radius: 8px;
-      background: var(--button);
-      color: white;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-bottom: 8px;
-      transition: opacity 0.2s;
-    }
-
-    button:active {
-      opacity: 0.85;
-    }
-
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .success-btn {
-      background: var(--success);
-    }
-
-    .error-btn {
-      background: var(--error);
-    }
-
-    .status {
-      padding: 12px;
-      border-radius: 8px;
-      margin-bottom: 12px;
-      font-size: 13px;
-      display: none;
-    }
-
-    .status.visible { display: block; }
-    .status.success { background: #d4edda; color: #155724; }
-    .status.error { background: #f8d7da; color: #721c24; }
-    .status.info { background: #d1ecf1; color: #0c5460; }
-
-    .progress {
-      width: 100%;
-      height: 4px;
-      background: var(--secondary-bg);
-      border-radius: 99px;
-      overflow: hidden;
-      margin-bottom: 12px;
-      display: none;
-    }
-
-    .progress.visible { display: block; }
-    .progress-bar {
-      height: 100%;
-      background: var(--button);
-      width: 0%;
-      transition: width 0.3s;
-    }
-
-    .file-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .file-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px;
-      background: white;
-      border-radius: 6px;
-      font-size: 13px;
-    }
-
-    .file-item-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .file-item-name {
-      font-weight: 500;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .file-item-size {
-      font-size: 12px;
-      color: var(--hint);
-      margin-top: 2px;
-    }
-
-    .file-item button {
-      padding: 6px 12px;
-      margin: 0 2px;
-      font-size: 12px;
-      width: auto;
-    }
-
-    .hidden { display: none !important; }
-
-    .debug {
-      background: #f5f5f5;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      padding: 8px;
-      font-size: 11px;
-      font-family: monospace;
-      max-height: 150px;
-      overflow-y: auto;
-      margin-top: 12px;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-
-    .footer {
-      margin-top: auto;
-      padding-top: 16px;
-      text-align: center;
-      font-size: 12px;
-      color: var(--hint);
-    }
+    body { font-family: Arial; background: #f0f0f0; margin: 0; padding: 16px; }
+    .container { max-width: 100%; background: white; padding: 16px; border-radius: 8px; }
+    h1 { color: #333; margin: 0 0 8px 0; }
+    .output { background: #f5f5f5; border: 1px solid #ddd; padding: 12px; border-radius: 4px; margin: 12px 0; font-size: 13px; font-family: monospace; max-height: 300px; overflow-y: auto; white-space: pre-wrap; }
+    input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+    button { width: 100%; padding: 12px; margin: 8px 0; background: #007bff; color: white; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; }
+    button:active { opacity: 0.8; }
+    .status { padding: 8px; margin: 8px 0; border-radius: 4px; }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    .info { background: #d1ecf1; color: #0c5460; }
   </style>
 </head>
 <body>
 
 <div class="container">
-
-  <div class="header">
-    <h1>📥 GitHub Downloader</h1>
-    <p>Download repos as ZIP files</p>
-  </div>
-
-  <!-- Input Section -->
-  <div class="card">
-    <label>Repository URL</label>
-    <input type="text" id="repoUrl" placeholder="https://github.com/user/repo">
-  </div>
-
-  <!-- Branch Selection -->
-  <div class="card" id="branchCard" class="hidden">
-    <label>Select Branch</label>
-    <select id="branchSelect"><option>main</option></select>
-  </div>
-
-  <!-- Status Messages -->
-  <div id="status" class="status"></div>
-  <div id="progress" class="progress">
-    <div id="progressBar" class="progress-bar"></div>
-  </div>
-
-  <!-- Download Button -->
-  <button id="downloadBtn" onclick="startDownload()">📥 Download Repository</button>
-
-  <!-- Download Options -->
-  <div id="downloadOptions" class="card hidden">
-    <label>Download Method</label>
-    <button class="success-btn" onclick="downloadFileSaver()">💾 Save to Storage</button>
-    <button onclick="downloadDirect()">📲 Direct Download</button>
-  </div>
-
-  <!-- Saved Files -->
-  <div id="savedCard" class="card hidden">
-    <label>💾 Saved Files</label>
-    <div id="fileList" class="file-list"></div>
-  </div>
-
-  <!-- Debug Info -->
-  <div id="debugInfo" class="debug"></div>
-
-</div>
-
-<div class="footer">
-  Telegram Mini App • Download & Save
+  <h1>📥 GitHub Downloader</h1>
+  <p>Test version with visible output</p>
+  
+  <div id="status" class="status info" style="display:none;"></div>
+  
+  <label>GitHub URL:</label>
+  <input type="text" id="url" placeholder="https://github.com/user/repo" value="">
+  
+  <button onclick="test()">🧪 TEST - Show Output</button>
+  <button onclick="downloadRepo()">📥 Download</button>
+  
+  <h3>Debug Output:</h3>
+  <div id="output" class="output">Loading...</div>
 </div>
 
 <script>
-  // Debug logging
-  const debugLog = (msg) => {
-    const debug = document.getElementById('debugInfo');
-    debug.textContent += new Date().toLocaleTimeString() + ' | ' + msg + '\n';
-    debug.scrollTop = debug.scrollHeight;
+  const out = document.getElementById('output');
+  const stat = document.getElementById('status');
+  
+  function log(msg) {
     console.log(msg);
-  };
-
-  // Initialize Telegram
-  const tg = window.Telegram?.WebApp;
-  if (tg) {
-    tg.ready();
-    debugLog('✓ Telegram WebApp ready');
-  } else {
-    debugLog('⚠ Telegram WebApp not detected');
+    out.textContent += msg + '\n';
+    out.scrollTop = out.scrollHeight;
   }
-
-  // Show status message
-  const showStatus = (msg, type = 'info') => {
-    const statusEl = document.getElementById('status');
-    statusEl.textContent = msg;
-    statusEl.className = `status visible ${type}`;
-    debugLog(`[${type.toUpperCase()}] ${msg}`);
-  };
-
-  // Show progress
-  const setProgress = (percent) => {
-    const progressEl = document.getElementById('progress');
-    const barEl = document.getElementById('progressBar');
-    progressEl.classList.add('visible');
-    barEl.style.width = Math.min(100, percent) + '%';
-  };
-
-  // State
-  let currentZip = null;
-  let currentFilename = null;
-  let dbReady = false;
-
-  // Init IndexedDB
-  const initDB = () => {
-    return new Promise((resolve) => {
-      try {
-        const req = indexedDB.open('GitDownloaderDB', 1);
-        req.onerror = () => {
-          debugLog('❌ IndexedDB failed');
-          resolve(false);
-        };
-        req.onsuccess = () => {
-          const db = req.result;
-          if (!db.objectStoreNames.contains('files')) {
-            db.close();
-            const req2 = indexedDB.open('GitDownloaderDB', 2);
-            req2.onupgradeneeded = (e) => {
-              e.target.result.createObjectStore('files', { keyPath: 'id', autoIncrement: true });
-            };
-            req2.onsuccess = () => {
-              dbReady = true;
-              debugLog('✓ IndexedDB ready');
-              resolve(true);
-            };
-          } else {
-            dbReady = true;
-            debugLog('✓ IndexedDB ready');
-            resolve(true);
-          }
-        };
-      } catch (e) {
-        debugLog('❌ IndexedDB error: ' + e.message);
-        resolve(false);
-      }
-    });
-  };
-
-  // Load saved files
-  const loadSavedFiles = () => {
-    if (!dbReady) return;
-    try {
-      const req = indexedDB.open('GitDownloaderDB');
-      req.onsuccess = () => {
-        const db = req.result;
-        const transaction = db.transaction(['files'], 'readonly');
-        const store = transaction.objectStore('files');
-        const getReq = store.getAll();
-        
-        getReq.onsuccess = () => {
-          const files = getReq.result;
-          const card = document.getElementById('savedCard');
-          const list = document.getElementById('fileList');
-          
-          if (files.length === 0) {
-            card.classList.add('hidden');
-            return;
-          }
-
-          list.innerHTML = '';
-          files.forEach((file, idx) => {
-            const item = document.createElement('div');
-            item.className = 'file-item';
-            item.innerHTML = `
-              <div class="file-item-info">
-                <div class="file-item-name">${file.filename}</div>
-                <div class="file-item-size">${(file.size / 1024 / 1024).toFixed(1)}MB</div>
-              </div>
-              <div>
-                <button onclick="downloadFromDB(${idx})">Download</button>
-                <button class="error-btn" onclick="deleteFromDB(${idx})">Delete</button>
-              </div>
-            `;
-            list.appendChild(item);
-          });
-          card.classList.remove('hidden');
-        };
-      };
-    } catch (e) {
-      debugLog('❌ Load files error: ' + e.message);
+  
+  function showStatus(msg, type) {
+    stat.textContent = msg;
+    stat.className = 'status ' + type;
+    stat.style.display = 'block';
+  }
+  
+  // Start
+  log('=== APP STARTED ===');
+  log('Time: ' + new Date().toLocaleString());
+  log('');
+  
+  // Check Telegram
+  if (window.Telegram) {
+    log('✓ Telegram object exists');
+    if (window.Telegram.WebApp) {
+      log('✓ Telegram.WebApp exists');
+      window.Telegram.WebApp.ready();
+      log('✓ WebApp.ready() called');
+    } else {
+      log('✗ Telegram.WebApp is undefined');
     }
-  };
-
-  // Save to IndexedDB
-  const saveToIndexedDB = (filename, blob) => {
-    return new Promise((resolve) => {
-      if (!dbReady) { resolve(false); return; }
-      try {
-        const req = indexedDB.open('GitDownloaderDB');
-        req.onsuccess = () => {
-          const db = req.result;
-          const transaction = db.transaction(['files'], 'readwrite');
-          const store = transaction.objectStore('files');
-          store.add({
-            filename,
-            blob,
-            size: blob.size,
-            timestamp: Date.now()
-          });
-          resolve(true);
-        };
-      } catch (e) {
-        debugLog('❌ Save to DB error: ' + e.message);
-        resolve(false);
-      }
-    });
-  };
-
-  // Download from IndexedDB
-  const downloadFromDB = (index) => {
-    try {
-      const req = indexedDB.open('GitDownloaderDB');
-      req.onsuccess = () => {
-        const db = req.result;
-        const transaction = db.transaction(['files'], 'readonly');
-        const store = transaction.objectStore('files');
-        const getReq = store.getAll();
-        
-        getReq.onsuccess = () => {
-          const file = getReq.result[index];
-          if (file) {
-            triggerDownload(file.blob, file.filename);
-          }
-        };
-      };
-    } catch (e) {
-      debugLog('❌ Download from DB error: ' + e.message);
+  } else {
+    log('✗ Telegram is undefined');
+  }
+  
+  // Check JSZip
+  if (window.JSZip) {
+    log('✓ JSZip loaded');
+  } else {
+    log('✗ JSZip not loaded');
+  }
+  
+  log('');
+  log('Ready to download!');
+  log('');
+  
+  function test() {
+    log('=== TEST CLICKED ===');
+    log('URL input value: ' + document.getElementById('url').value);
+    log('Test complete');
+    showStatus('Test works!', 'success');
+  }
+  
+  async function downloadRepo() {
+    log('');
+    log('=== DOWNLOAD STARTED ===');
+    
+    const url = document.getElementById('url').value.trim();
+    log('URL: ' + url);
+    
+    if (!url) {
+      log('✗ URL is empty');
+      showStatus('Enter a URL', 'error');
+      return;
     }
-  };
-
-  // Delete from IndexedDB
-  const deleteFromDB = (index) => {
-    try {
-      const req = indexedDB.open('GitDownloaderDB');
-      req.onsuccess = () => {
-        const db = req.result;
-        const transaction = db.transaction(['files'], 'readwrite');
-        const store = transaction.objectStore('files');
-        const getReq = store.getAll();
-        
-        getReq.onsuccess = () => {
-          const files = getReq.result;
-          if (files[index]) {
-            store.delete(files[index].id);
-            loadSavedFiles();
-          }
-        };
-      };
-    } catch (e) {
-      debugLog('❌ Delete error: ' + e.message);
-    }
-  };
-
-  // Trigger download
-  const triggerDownload = (blob, filename) => {
-    try {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 100);
-      showStatus('✓ Downloaded: ' + filename, 'success');
-      debugLog('✓ Download triggered: ' + filename);
-    } catch (e) {
-      debugLog('❌ Trigger download error: ' + e.message);
-      showStatus('Error: ' + e.message, 'error');
-    }
-  };
-
-  // Download methods
-  const downloadFileSaver = async () => {
-    if (!currentZip) return;
-    try {
-      showStatus('Saving to storage...', 'info');
-      const saved = await saveToIndexedDB(currentFilename, currentZip);
-      if (saved) {
-        showStatus('✓ Saved successfully!', 'success');
-        loadSavedFiles();
-        await new Promise(r => setTimeout(r, 1000));
-        document.getElementById('downloadOptions').classList.add('hidden');
-        document.getElementById('downloadBtn').style.display = '';
-      }
-    } catch (e) {
-      showStatus('Error: ' + e.message, 'error');
-    }
-  };
-
-  const downloadDirect = () => {
-    if (!currentZip) return;
-    try {
-      triggerDownload(currentZip, currentFilename);
-    } catch (e) {
-      showStatus('Error: ' + e.message, 'error');
-    }
-  };
-
-  // Parse GitHub URL
-  const parseGitHubUrl = (url) => {
+    
+    // Parse URL
+    let owner, repo;
     try {
       const u = new URL(url);
       const parts = u.pathname.split('/').filter(Boolean);
-      if (parts.length < 2) return null;
-      return { owner: parts[0], repo: parts[1].replace(/\.git$/i, '') };
-    } catch {
-      return null;
-    }
-  };
-
-  // Fetch branches
-  const fetchBranches = async (owner, repo) => {
-    try {
-      debugLog(`Fetching branches for ${owner}/${repo}...`);
-      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/branches?per_page=50`);
-      if (!res.ok) throw new Error('Failed to fetch branches');
-      const branches = await res.json();
-      const select = document.getElementById('branchSelect');
-      select.innerHTML = '';
-      branches.forEach(b => {
-        const opt = document.createElement('option');
-        opt.value = b.name;
-        opt.textContent = b.name;
-        select.appendChild(opt);
-      });
-      document.getElementById('branchCard').classList.remove('hidden');
-      debugLog(`✓ Fetched ${branches.length} branches`);
+      owner = parts[0];
+      repo = parts[1].replace(/\.git/i, '');
+      log('✓ Parsed: ' + owner + '/' + repo);
     } catch (e) {
-      debugLog('⚠ Branch fetch failed: ' + e.message);
-    }
-  };
-
-  // Repo URL input
-  document.getElementById('repoUrl').addEventListener('input', (e) => {
-    const parsed = parseGitHubUrl(e.target.value);
-    if (parsed) {
-      fetchBranches(parsed.owner, parsed.repo);
-    } else {
-      document.getElementById('branchCard').classList.add('hidden');
-    }
-  });
-
-  // Start download
-  const startDownload = async () => {
-    const url = document.getElementById('repoUrl').value.trim();
-    const parsed = parseGitHubUrl(url);
-
-    if (!parsed) {
-      showStatus('Invalid GitHub URL', 'error');
+      log('✗ Invalid URL: ' + e.message);
+      showStatus('Invalid URL format', 'error');
       return;
     }
-
-    const branch = document.getElementById('branchSelect').value || 'main';
-    const { owner, repo } = parsed;
-
+    
     try {
-      document.getElementById('downloadBtn').disabled = true;
-      document.getElementById('downloadOptions').classList.add('hidden');
-
-      showStatus('Fetching repository...', 'info');
-      setProgress(10);
-      debugLog(`Downloading ${owner}/${repo}@${branch}...`);
-
+      showStatus('Downloading...', 'info');
+      
       // Fetch tree
-      const treeRes = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`
-      );
-      if (!treeRes.ok) throw new Error('Repository not found or private');
-
+      log('Fetching tree...');
+      const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/main?recursive=1`;
+      log('Tree URL: ' + treeUrl);
+      
+      const treeRes = await fetch(treeUrl);
+      log('Tree response: ' + treeRes.status + ' ' + treeRes.statusText);
+      
+      if (!treeRes.ok) {
+        log('✗ Tree fetch failed');
+        showStatus('Repository not found', 'error');
+        return;
+      }
+      
       const treeData = await treeRes.json();
       const files = treeData.tree.filter(f => f.type === 'blob');
-      if (files.length === 0) throw new Error('No files found');
-
-      showStatus(`Fetching ${files.length} files...`, 'info');
-      setProgress(20);
-      debugLog(`Found ${files.length} files`);
-
-      const zip = new JSZip();
-      let fetched = 0;
-
-      // Fetch files in batches
-      for (let i = 0; i < files.length; i += 5) {
-        const batch = files.slice(i, i + 5);
-        await Promise.all(batch.map(async (f) => {
-          try {
-            const fileRes = await fetch(
-              `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${f.path}`
-            );
-            if (fileRes.ok) {
-              zip.file(`${repo}/${f.path}`, await fileRes.blob());
-            }
-          } catch (e) {
-            debugLog(`⚠ Failed to fetch ${f.path}`);
-          }
-          fetched++;
-          setProgress(20 + Math.round((fetched / files.length) * 60));
-        }));
-      }
-
-      showStatus('Creating ZIP...', 'info');
-      setProgress(85);
-
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      log('✓ Found ' + files.length + ' files');
       
-      showStatus('Done! Choose download method.', 'success');
-      setProgress(100);
-
-      currentZip = zipBlob;
-      currentFilename = `${repo}-${branch}.zip`;
-
-      debugLog(`✓ ZIP created: ${(zipBlob.size / 1024 / 1024).toFixed(1)}MB`);
-
-      document.getElementById('downloadBtn').style.display = 'none';
-      document.getElementById('downloadOptions').classList.remove('hidden');
-
+      if (files.length === 0) {
+        log('✗ No files found');
+        showStatus('No files to download', 'error');
+        return;
+      }
+      
+      // Download files
+      log('Downloading ' + Math.min(5, files.length) + ' files (sample)...');
+      const zip = new JSZip();
+      let count = 0;
+      
+      for (let i = 0; i < Math.min(5, files.length); i++) {
+        const f = files[i];
+        try {
+          const fileUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${f.path}`;
+          const fileRes = await fetch(fileUrl);
+          if (fileRes.ok) {
+            zip.file(f.path, await fileRes.blob());
+            count++;
+            log('  ✓ ' + f.path);
+          }
+        } catch (e) {
+          log('  ✗ ' + f.path + ': ' + e.message);
+        }
+      }
+      
+      log('✓ Downloaded ' + count + ' files');
+      
+      // Create ZIP
+      log('Creating ZIP...');
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const zipSize = (zipBlob.size / 1024 / 1024).toFixed(2);
+      log('✓ ZIP created: ' + zipSize + 'MB');
+      
+      // Download
+      log('Triggering download...');
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = repo + '-sample.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      log('✓ Download triggered!');
+      showStatus('Download started! Check your files.', 'success');
+      
     } catch (e) {
+      log('✗ Error: ' + e.message);
+      log(e.stack);
       showStatus('Error: ' + e.message, 'error');
-      debugLog('❌ ' + e.message);
-    } finally {
-      document.getElementById('downloadBtn').disabled = false;
     }
-  };
-
-  // Initialize
-  window.addEventListener('load', async () => {
-    debugLog('🚀 App starting...');
-    await initDB();
-    loadSavedFiles();
-  });
+  }
 </script>
 
 </body>
